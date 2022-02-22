@@ -1,2 +1,2 @@
 # replay-nn-tutorials
-my replays of beautiful torch tutorials on training neural networks.
+my replays of beautiful tutorials on training neural networks.

@@ -1,18 +1,17 @@
 """
-Minimal character-based language model learning with RNNs.
-Taken from Andrej Karpathy's min-char-rnn:
-    https://gist.github.com/karpathy/d4dee566867f8291f086
-The companion blog post is:
-  https://eli.thegreenplace.net/2018/understanding-how-to-implement-a-character-based-rnn-language-model/.
-Modified in various ways for better introspection / customization, Python 3
-compatibility and added comments. I tried to retain the overall structure of
-this code almost identical to the original.
-To run, learning a char-based language model from some text:
+A minimal character-based 2-layer Vanilla RNN model.
+This is derived from the following scripts:
+- https://gist.github.com/karpathy/d4dee566867f8291f086
+- https://github.com/eliben/deep-learning-samples/blob/master/min-char-rnn/min-char-rnn.py
+And you might find the following materials helpful:
+- http://karpathy.github.io/2015/05/21/rnn-effectiveness/
+- http://arxiv.org/abs/1506.00019
+
+To run:
+
     $ python min-char-rnn.py <text file>
+
 ----
-Original license/copyright blurb:
-Minimal character-level Vanilla RNN model.
-Written by Andrej Karpathy (@karpathy)
 BSD License
 """
 from __future__ import print_function

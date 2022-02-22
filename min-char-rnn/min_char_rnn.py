@@ -1,19 +1,5 @@
 """
-Minimal character-based language model learning with RNNs.
-Taken from Andrej Karpathy's min-char-rnn:
-    https://gist.github.com/karpathy/d4dee566867f8291f086
-The companion blog post is:
-  https://eli.thegreenplace.net/2018/understanding-how-to-implement-a-character-based-rnn-language-model/.
-Modified in various ways for better introspection / customization, Python 3
-compatibility and added comments. I tried to retain the overall structure of
-this code almost identical to the original.
-To run, learning a char-based language model from some text:
-    $ python min-char-rnn.py <text file>
-----
-Original license/copyright blurb:
-Minimal character-level Vanilla RNN model.
-Written by Andrej Karpathy (@karpathy)
-BSD License
+This is taken directly from https://github.com/eliben/deep-learning-samples/blob/master/min-char-rnn/min-char-rnn.py
 """
 from __future__ import print_function
 
@@ -61,7 +47,7 @@ MAX_ITER = 10000
 Wxh = np.random.randn(hidden_size, vocab_size) * 0.01  # input to hidden
 Whh = np.random.randn(hidden_size, hidden_size) * 0.01  # hidden to hidden
 Why = np.random.randn(vocab_size, hidden_size) * 0.01  # hidden to output
-bh1 = np.zeros((hidden_size, 1))  # hidden bias
+bh = np.zeros((hidden_size, 1))  # hidden bias
 by = np.zeros((vocab_size, 1))  # output bias
 
 
@@ -89,7 +75,7 @@ def lossFun(inputs, targets, hprev):
         xs[t][inputs[t]] = 1
 
         # Compute h[t] from h[t-1] and x[t]
-        hs[t] = np.tanh(np.dot(Wxh, xs[t]) + np.dot(Whh, hs[t - 1]) + bh1)
+        hs[t] = np.tanh(np.dot(Wxh, xs[t]) + np.dot(Whh, hs[t - 1]) + bh)
 
         # Compute ps[t] - softmax probabilities for output.
         ys[t] = np.dot(Why, hs[t]) + by
@@ -111,7 +97,7 @@ def lossFun(inputs, targets, hprev):
     # Backward pass: compute gradients going backwards.
     # Gradients are initialized to 0s, and every time step contributes to them.
     dWxh, dWhh, dWhy = np.zeros_like(Wxh), np.zeros_like(Whh), np.zeros_like(Why)
-    dbh, dby = np.zeros_like(bh1), np.zeros_like(by)
+    dbh, dby = np.zeros_like(bh), np.zeros_like(by)
 
     # Initialize the incoming gradient of h to zero; this is a safe assumption for
     # a sufficiently long unrolling.
@@ -149,8 +135,6 @@ def lossFun(inputs, targets, hprev):
     # Gradient clipping to the range [-5, 5].
     for dparam in [dWxh, dWhh, dWhy, dbh, dby]:
         np.clip(dparam, -5, 5, out=dparam)
-    # TODO: remove
-    # print(np.average(dWhy), np.average(dWhh), np.average(dWxh))
 
     return loss, dWxh, dWhh, dWhy, dbh, dby, hs[len(inputs) - 1]
 
@@ -168,7 +152,7 @@ def sample(h, seed_ix, n):
 
     for t in range(n):
         # Run the forward pass only.
-        h = np.tanh(np.dot(Wxh, x) + np.dot(Whh, h) + bh1)
+        h = np.tanh(np.dot(Wxh, x) + np.dot(Whh, h) + bh)
         y = np.dot(Why, h) + by
         p = np.exp(y) / np.sum(np.exp(y))
 
@@ -187,7 +171,7 @@ from random import uniform
 
 
 def gradCheck(inputs, targets, hprev):
-    global Wxh, Whh, Why, bh1, by
+    global Wxh, Whh, Why, bh, by
     num_checks, delta = 30, 1e-5
     _, dWxh, dWhh, dWhy, dbh, dby, _ = lossFun(inputs, targets, hprev)
     for param, dparam, name in zip([Wxh, Whh, Why, bh, by],
@@ -232,7 +216,7 @@ n, p = 0, 0
 
 # Memory variables for Adagrad.
 mWxh, mWhh, mWhy = np.zeros_like(Wxh), np.zeros_like(Whh), np.zeros_like(Why)
-mbh, mby = np.zeros_like(bh1), np.zeros_like(by)
+mbh, mby = np.zeros_like(bh), np.zeros_like(by)
 smooth_loss = -np.log(1.0 / vocab_size) * seq_length
 
 while p < MAX_DATA:
@@ -261,7 +245,7 @@ while p < MAX_DATA:
     if n % 200 == 0: print('iter %d (p=%d), loss: %f' % (n, p, smooth_loss))
 
     # Perform parameter update with Adagrad
-    for param, dparam, mem in zip([Wxh, Whh, Why, bh1, by],
+    for param, dparam, mem in zip([Wxh, Whh, Why, bh, by],
                                   [dWxh, dWhh, dWhy, dbh, dby],
                                   [mWxh, mWhh, mWhy, mbh, mby]):
         mem += dparam * dparam
