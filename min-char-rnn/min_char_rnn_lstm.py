@@ -13,7 +13,7 @@ And you might find the following materials helpful:
 
 To run:
 
-    $ python min-char-rnn.py <text file>
+    $ python min_char_rnn_lstm.py <text file>
 
 ----
 BSD License
