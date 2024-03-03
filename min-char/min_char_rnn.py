@@ -1,21 +1,6 @@
 """
-A minimal character-based 2-layer Vanilla RNN model.
-This is derived from the following scripts:
-- https://gist.github.com/karpathy/d4dee566867f8291f086
-- https://github.com/eliben/deep-learning-samples/blob/master/min-char-rnn/min-char-rnn.py
-And you might find the following materials helpful:
-- http://karpathy.github.io/2015/05/21/rnn-effectiveness/
-- http://arxiv.org/abs/1506.00019
-
-To run:
-
-    $ python min_char_rnn_two_layers.py <text file>
-
-----
-BSD License
+This is taken directly from https://github.com/eliben/deep-learning-samples/blob/master/min-char-rnn/min-char-rnn.py
 """
-from __future__ import print_function
-
 import numpy as np
 import sys
 
@@ -30,6 +15,7 @@ with open(filename, 'r') as f:
     data = f.read()
 
 # All unique characters / entities in the data set.
+print("upper case")
 chars = list(set(data))
 chars.sort()
 data_size, vocab_size = len(data), len(chars)
@@ -44,25 +30,22 @@ print('char_to_ix', char_to_ix)
 print('ix_to_char', ix_to_char)
 
 # Hyperparameters
-hidden_size = 512  # size of hidden layer of neurons
+hidden_size = 100  # size of hidden layer of neurons
 seq_length = 16  # number of steps to unroll the RNN for
-learning_rate = 1e-2
+learning_rate = 1e-1
 
 # Stop when processed this much data
-MAX_DATA = 100000
-MAX_ITER = 200000
+MAX_DATA = 1000000
+MAX_ITER = 10000
 
 # Model parameters/weights -- these are shared among all steps. Weights
 # initialized randomly; biases initialized to 0.
 # Inputs are characters one-hot encoded in a vocab-sized vector.
 # Dimensions: H = hidden_size, V = vocab_size
 Wxh = np.random.randn(hidden_size, vocab_size) * 0.01  # input to hidden
-Whh1 = np.random.randn(hidden_size, hidden_size) * 0.01  # hidden to hidden in layer one
-Whh2 = np.random.randn(hidden_size, hidden_size) * 0.01 # hidden to hidden in layer two
-Wh1h2 = np.random.randn(hidden_size, hidden_size) * 0.01 # hidden to hidden from layer one to layer two
+Whh = np.random.randn(hidden_size, hidden_size) * 0.01  # hidden to hidden
 Why = np.random.randn(vocab_size, hidden_size) * 0.01  # hidden to output
-bh1 = np.zeros((hidden_size, 1))  # hidden bias
-bh2 = np.zeros((hidden_size, 1)) # hidden bias from layer one to layer two
+bh = np.zeros((hidden_size, 1))  # hidden bias
 by = np.zeros((vocab_size, 1))  # output bias
 
 
@@ -72,17 +55,15 @@ def lossFun(inputs, targets, hprev):
                    character (encoded as an index into the ix_to_char map) and
                    targets[i] is the corresponding next character in the
                    training data (similarly encoded).
-  hprev: Hx2 array of initial hidden state
+  hprev: Hx1 array of initial hidden state
   returns: loss, gradients on model parameters, and last hidden state
   """
     # Caches that keep values computed in the forward pass at each time step, to
     # be reused in the backward pass.
-    xs, h1s, h2s, ys, ps = {}, {}, {}, {}, {}
+    xs, hs, ys, ps = {}, {}, {}, {}
 
     # Initial incoming state.
-    h1s[-1] = np.expand_dims(np.copy(hprev[:, 0]), 1)
-    h2s[-1] = np.expand_dims(np.copy(hprev[:, 1]), 1)
-
+    hs[-1] = np.copy(hprev)
     loss = 0
     # Forward pass
     for t in range(len(inputs)):
@@ -91,12 +72,11 @@ def lossFun(inputs, targets, hprev):
         xs[t] = np.zeros((vocab_size, 1))  # encode in 1-of-k representation
         xs[t][inputs[t]] = 1
 
-        # Compute h1[t], h2[t] from h1[t-1], h2[t-1] and x[t]
-        h1s[t] = np.tanh(np.dot(Wxh, xs[t]) + np.dot(Whh1, h1s[t-1]) + bh1)
-        h2s[t] = np.tanh(np.dot(Wh1h2, h1s[t]) + np.dot(Whh2, h2s[t-1]) + bh2)
+        # Compute h[t] from h[t-1] and x[t]
+        hs[t] = np.tanh(np.dot(Wxh, xs[t]) + np.dot(Whh, hs[t - 1]) + bh)
 
         # Compute ps[t] - softmax probabilities for output.
-        ys[t] = np.dot(Why, h2s[t]) + by
+        ys[t] = np.dot(Why, hs[t]) + by
         ps[t] = np.exp(ys[t]) / np.sum(np.exp(ys[t]))
 
         # Cross-entropy loss for two probability distributions p and q is defined as
@@ -114,13 +94,12 @@ def lossFun(inputs, targets, hprev):
 
     # Backward pass: compute gradients going backwards.
     # Gradients are initialized to 0s, and every time step contributes to them.
-    dWxh, dWhh1, dWhh2, dWh1h2, dWhy = np.zeros_like(Wxh), np.zeros_like(Whh1), np.zeros_like(Whh2), np.zeros_like(Wh1h2), np.zeros_like(Why)
-    dbh1, dbh2, dby = np.zeros_like(bh1), np.zeros_like(bh2), np.zeros_like(by)
+    dWxh, dWhh, dWhy = np.zeros_like(Wxh), np.zeros_like(Whh), np.zeros_like(Why)
+    dbh, dby = np.zeros_like(bh), np.zeros_like(by)
 
     # Initialize the incoming gradient of h to zero; this is a safe assumption for
     # a sufficiently long unrolling.
-    dh1next = np.zeros_like(h1s[0])
-    dh2next = np.zeros_like(h2s[0])
+    dhnext = np.zeros_like(hs[0])
 
     # The backwards pass iterates over the input sequence backwards.
     for t in reversed(range(len(inputs))):
@@ -129,41 +108,33 @@ def lossFun(inputs, targets, hprev):
         dy[targets[t]] -= 1
 
         # Compute gradients for the Why and by parameters.
-        dWhy += np.dot(dy, h2s[t].T)
+        dWhy += np.dot(dy, hs[t].T)
         dby += dy
 
-        # Backprop through the fully-connected layer (Why, by) to h2. Also add up the
-        # incoming gradient for h2 from the next cell.
+        # Backprop through the fully-connected layer (Why, by) to h. Also add up the
+        # incoming gradient for h from the next cell.
         # Note: proper Jacobian matmul here would be dy.dot(Why), that would give
         # a [1,T] vector. Since we need [T,1] for h, we flip the dot (we could have
         # transposed after everything, too)
-        dh2 = np.dot(Why.T, dy) + dh2next
-        # Backprop through the tanh in layer two.
-        dh2raw = (1 - h2s[t] * h2s[t]) * dh2
-        # Compute gradients for the dbh2, dWh1h2, Whh2 parameters.
-        dbh2 += dh2raw
-        dWh1h2 += np.dot(dh2raw, h1s[t].T)
-        dWhh2 += np.dot(dh2raw, h2s[t-1].T)
+        dh = np.dot(Why.T, dy) + dhnext
 
-        # Backprop through the fully-connected layer (Wh1h2, dbh1) to h1. Also add up the
-        # incoming gradient for h1 from the next cell.
-        dh1 = np.dot(Wh1h2.T, dh2raw) + dh1next
-        dh1raw = (1 - h1s[t] * h1s[t]) * dh1
-        # Compute
-        dbh1 += dh1raw
-        dWxh += np.dot(dh1raw, xs[t].T)
-        dWhh1 += np.dot(dh1raw, h1s[t-1].T)
+        # Backprop through tanh.
+        dhraw = (1 - hs[t] * hs[t]) * dh
+
+        # Compute gradients for the dby, dWxh, Whh parameters.
+        dbh += dhraw
+        dWxh += np.dot(dhraw, xs[t].T)
+        dWhh += np.dot(dhraw, hs[t - 1].T)
 
         # Backprop the gradient to the incoming h, which will be used in the
         # previous time step.
-        dh2next = np.dot(Whh2.T, dh2raw)
-        dh1next = np.dot(Whh1.T, dh1raw)
+        dhnext = np.dot(Whh.T, dhraw)
 
     # Gradient clipping to the range [-5, 5].
-    for dparam in [dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby]:
+    for dparam in [dWxh, dWhh, dWhy, dbh, dby]:
         np.clip(dparam, -5, 5, out=dparam)
 
-    return loss, dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby, np.concatenate((h1s[len(inputs) - 1], h2s[len(inputs)-1]), axis=1)
+    return loss, dWxh, dWhh, dWhy, dbh, dby, hs[len(inputs) - 1]
 
 
 def sample(h, seed_ix, n):
@@ -177,14 +148,10 @@ def sample(h, seed_ix, n):
     x[seed_ix] = 1
     ixes = []
 
-    h1 = np.expand_dims(np.copy(h[:, 0]), 1)
-    h2 = np.expand_dims(np.copy(h[:, 1]), 1)
-
     for t in range(n):
         # Run the forward pass only.
-        h1 = np.tanh(np.dot(Wxh, x) + np.dot(Whh1, h1) + bh1)
-        h2 = np.tanh(np.dot(Wh1h2, h1) + np.dot(Whh2, h2) + bh2)
-        y = np.dot(Why, h2) + by
+        h = np.tanh(np.dot(Wxh, x) + np.dot(Whh, h) + bh)
+        y = np.dot(Why, h) + by
         p = np.exp(y) / np.sum(np.exp(y))
 
         # Sample from the distribution produced by softmax.
@@ -202,12 +169,12 @@ from random import uniform
 
 
 def gradCheck(inputs, targets, hprev):
-    global Wxh, Whh1, Whh2, Wh1h2, Why, bh1, bh2, by
+    global Wxh, Whh, Why, bh, by
     num_checks, delta = 30, 1e-5
-    _, dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby, _ = lossFun(inputs, targets, hprev)
-    for param, dparam, name in zip([Wxh, Whh1, Whh2, Wh1h2, Why, bh1, bh2, by],
-                                   [dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby],
-                                   ['Wxh', 'Whh1', 'Whh2', 'Wh1h2', 'Why', 'bh', 'bhh', 'by']):
+    _, dWxh, dWhh, dWhy, dbh, dby, _ = lossFun(inputs, targets, hprev)
+    for param, dparam, name in zip([Wxh, Whh, Why, bh, by],
+                                   [dWxh, dWhh, dWhy, dbh, dby],
+                                   ['Wxh', 'Whh', 'Why', 'bh', 'by']):
         s0 = dparam.shape
         s1 = param.shape
         assert s0 == s1, 'Error dims dont match: %s and %s.' % (s0, s1)
@@ -217,9 +184,9 @@ def gradCheck(inputs, targets, hprev):
             # evaluate cost at [x + delta] and [x - delta]
             old_val = param.flat[ri]
             param.flat[ri] = old_val + delta
-            cg0, _, _, _, _, _, _, _, _, _ = lossFun(inputs, targets, hprev)
+            cg0, _, _, _, _, _, _ = lossFun(inputs, targets, hprev)
             param.flat[ri] = old_val - delta
-            cg1, _, _, _, _, _, _, _, _, _ = lossFun(inputs, targets, hprev)
+            cg1, _, _, _, _, _, _ = lossFun(inputs, targets, hprev)
             param.flat[ri] = old_val  # reset old value for this parameter
             # fetch both numerical and analytic gradient
             grad_analytic = dparam.flat[ri]
@@ -233,7 +200,7 @@ def gradCheck(inputs, targets, hprev):
 def basicGradCheck():
     inputs = [char_to_ix[ch] for ch in data[:seq_length]]
     targets = [char_to_ix[ch] for ch in data[1:seq_length + 1]]
-    hprev = np.zeros((hidden_size, 2))  # reset RNN memory
+    hprev = np.zeros((hidden_size, 1))  # reset RNN memory
     gradCheck(inputs, targets, hprev)
 
 
@@ -246,14 +213,14 @@ def basicGradCheck():
 n, p = 0, 0
 
 # Memory variables for Adagrad.
-mWxh, mWhh1, mWhh2, mWh1h2, mWhy = np.zeros_like(Wxh), np.zeros_like(Whh1), np.zeros_like(Whh2), np.zeros_like(Wh1h2), np.zeros_like(Why)
-mbh1, mbh2, mby = np.zeros_like(bh1), np.zeros_like(bh2), np.zeros_like(by)
+mWxh, mWhh, mWhy = np.zeros_like(Wxh), np.zeros_like(Whh), np.zeros_like(Why)
+mbh, mby = np.zeros_like(bh), np.zeros_like(by)
 smooth_loss = -np.log(1.0 / vocab_size) * seq_length
 
-while n < MAX_ITER:
+while p < MAX_DATA:
     # Prepare inputs (we're sweeping from left to right in steps seq_length long)
     if p + seq_length + 1 >= len(data) or n == 0:
-        hprev = np.zeros((hidden_size, 2))  # reset RNN memory
+        hprev = np.zeros((hidden_size, 1))  # reset RNN memory
         p = 0  # go from start of data
 
     # In each step we unroll the RNN for seq_length cells, and present it with
@@ -271,14 +238,14 @@ while n < MAX_ITER:
         print('----\n %s \n----' % (txt,))
 
     # Forward seq_length characters through the net and fetch gradient
-    loss, dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby, hprev = lossFun(inputs, targets, hprev)
+    loss, dWxh, dWhh, dWhy, dbh, dby, hprev = lossFun(inputs, targets, hprev)
     smooth_loss = smooth_loss * 0.999 + loss * 0.001
     if n % 200 == 0: print('iter %d (p=%d), loss: %f' % (n, p, smooth_loss))
 
     # Perform parameter update with Adagrad
-    for param, dparam, mem in zip([Wxh, Whh1, Whh2, Wh1h2, Why, bh1, bh2, by],
-                                  [dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby],
-                                  [mWxh, mWhh1, mWhh2, mWh1h2, mWhy, mbh1, mbh2, mby]):
+    for param, dparam, mem in zip([Wxh, Whh, Why, bh, by],
+                                  [dWxh, dWhh, dWhy, dbh, dby],
+                                  [mWxh, mWhh, mWhy, mbh, mby]):
         mem += dparam * dparam
         param += -learning_rate * dparam / np.sqrt(mem + 1e-8)
 

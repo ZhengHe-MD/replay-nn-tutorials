@@ -18,8 +18,9 @@ To run:
 ----
 BSD License
 """
-import numpy as np
 import sys
+
+import numpy as np
 
 if len(sys.argv) > 1:
     filename = sys.argv[1]
@@ -250,7 +251,8 @@ while p < MAX_DATA:
         txt = ''.join(ix_to_char[ix] for ix in sample_ix)
         print('----\n %s \n----' % (txt,))
 
-    loss, dWgs, dWis, dWfs, dWos, dbgs, dbis, dbfs, dbos, dWhy, dby, hprev, sprev = lossFun(inputs, targets, hprev, sprev)
+    loss, dWgs, dWis, dWfs, dWos, dbgs, dbis, dbfs, dbos, dWhy, dby, hprev, sprev = lossFun(inputs, targets, hprev,
+                                                                                            sprev)
     smooth_loss = smooth_loss * 0.999 + loss * 0.001
     if n % 200 == 0: print('iter %d (p=%d), loss: %f' % (n, p, smooth_loss))
 
