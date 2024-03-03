@@ -14,10 +14,9 @@ To run:
 ----
 BSD License
 """
-from __future__ import print_function
+import sys
 
 import numpy as np
-import sys
 
 # Make it possible to provide input file as a command-line argument; input.txt
 # is still the default.

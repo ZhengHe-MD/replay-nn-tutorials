@@ -14,10 +14,9 @@ To run:
 ----
 BSD License
 """
-from __future__ import print_function
+import sys
 
 import numpy as np
-import sys
 
 # Make it possible to provide input file as a command-line argument; input.txt
 # is still the default.
@@ -58,11 +57,11 @@ MAX_ITER = 200000
 # Dimensions: H = hidden_size, V = vocab_size
 Wxh = np.random.randn(hidden_size, vocab_size) * 0.01  # input to hidden
 Whh1 = np.random.randn(hidden_size, hidden_size) * 0.01  # hidden to hidden in layer one
-Whh2 = np.random.randn(hidden_size, hidden_size) * 0.01 # hidden to hidden in layer two
-Wh1h2 = np.random.randn(hidden_size, hidden_size) * 0.01 # hidden to hidden from layer one to layer two
+Whh2 = np.random.randn(hidden_size, hidden_size) * 0.01  # hidden to hidden in layer two
+Wh1h2 = np.random.randn(hidden_size, hidden_size) * 0.01  # hidden to hidden from layer one to layer two
 Why = np.random.randn(vocab_size, hidden_size) * 0.01  # hidden to output
 bh1 = np.zeros((hidden_size, 1))  # hidden bias
-bh2 = np.zeros((hidden_size, 1)) # hidden bias from layer one to layer two
+bh2 = np.zeros((hidden_size, 1))  # hidden bias from layer one to layer two
 by = np.zeros((vocab_size, 1))  # output bias
 
 
@@ -92,8 +91,8 @@ def lossFun(inputs, targets, hprev):
         xs[t][inputs[t]] = 1
 
         # Compute h1[t], h2[t] from h1[t-1], h2[t-1] and x[t]
-        h1s[t] = np.tanh(np.dot(Wxh, xs[t]) + np.dot(Whh1, h1s[t-1]) + bh1)
-        h2s[t] = np.tanh(np.dot(Wh1h2, h1s[t]) + np.dot(Whh2, h2s[t-1]) + bh2)
+        h1s[t] = np.tanh(np.dot(Wxh, xs[t]) + np.dot(Whh1, h1s[t - 1]) + bh1)
+        h2s[t] = np.tanh(np.dot(Wh1h2, h1s[t]) + np.dot(Whh2, h2s[t - 1]) + bh2)
 
         # Compute ps[t] - softmax probabilities for output.
         ys[t] = np.dot(Why, h2s[t]) + by
@@ -114,7 +113,8 @@ def lossFun(inputs, targets, hprev):
 
     # Backward pass: compute gradients going backwards.
     # Gradients are initialized to 0s, and every time step contributes to them.
-    dWxh, dWhh1, dWhh2, dWh1h2, dWhy = np.zeros_like(Wxh), np.zeros_like(Whh1), np.zeros_like(Whh2), np.zeros_like(Wh1h2), np.zeros_like(Why)
+    dWxh, dWhh1, dWhh2, dWh1h2, dWhy = np.zeros_like(Wxh), np.zeros_like(Whh1), np.zeros_like(Whh2), np.zeros_like(
+        Wh1h2), np.zeros_like(Why)
     dbh1, dbh2, dby = np.zeros_like(bh1), np.zeros_like(bh2), np.zeros_like(by)
 
     # Initialize the incoming gradient of h to zero; this is a safe assumption for
@@ -143,7 +143,7 @@ def lossFun(inputs, targets, hprev):
         # Compute gradients for the dbh2, dWh1h2, Whh2 parameters.
         dbh2 += dh2raw
         dWh1h2 += np.dot(dh2raw, h1s[t].T)
-        dWhh2 += np.dot(dh2raw, h2s[t-1].T)
+        dWhh2 += np.dot(dh2raw, h2s[t - 1].T)
 
         # Backprop through the fully-connected layer (Wh1h2, dbh1) to h1. Also add up the
         # incoming gradient for h1 from the next cell.
@@ -152,7 +152,7 @@ def lossFun(inputs, targets, hprev):
         # Compute
         dbh1 += dh1raw
         dWxh += np.dot(dh1raw, xs[t].T)
-        dWhh1 += np.dot(dh1raw, h1s[t-1].T)
+        dWhh1 += np.dot(dh1raw, h1s[t - 1].T)
 
         # Backprop the gradient to the incoming h, which will be used in the
         # previous time step.
@@ -163,7 +163,8 @@ def lossFun(inputs, targets, hprev):
     for dparam in [dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby]:
         np.clip(dparam, -5, 5, out=dparam)
 
-    return loss, dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby, np.concatenate((h1s[len(inputs) - 1], h2s[len(inputs)-1]), axis=1)
+    return loss, dWxh, dWhh1, dWhh2, dWh1h2, dWhy, dbh1, dbh2, dby, np.concatenate(
+        (h1s[len(inputs) - 1], h2s[len(inputs) - 1]), axis=1)
 
 
 def sample(h, seed_ix, n):
@@ -246,7 +247,8 @@ def basicGradCheck():
 n, p = 0, 0
 
 # Memory variables for Adagrad.
-mWxh, mWhh1, mWhh2, mWh1h2, mWhy = np.zeros_like(Wxh), np.zeros_like(Whh1), np.zeros_like(Whh2), np.zeros_like(Wh1h2), np.zeros_like(Why)
+mWxh, mWhh1, mWhh2, mWh1h2, mWhy = np.zeros_like(Wxh), np.zeros_like(Whh1), np.zeros_like(Whh2), np.zeros_like(
+    Wh1h2), np.zeros_like(Why)
 mbh1, mbh2, mby = np.zeros_like(bh1), np.zeros_like(bh2), np.zeros_like(by)
 smooth_loss = -np.log(1.0 / vocab_size) * seq_length
 

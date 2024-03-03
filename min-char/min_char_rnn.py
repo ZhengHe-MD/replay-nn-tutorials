@@ -1,8 +1,6 @@
 """
 This is taken directly from https://github.com/eliben/deep-learning-samples/blob/master/min-char-rnn/min-char-rnn.py
 """
-from __future__ import print_function
-
 import numpy as np
 import sys
 
