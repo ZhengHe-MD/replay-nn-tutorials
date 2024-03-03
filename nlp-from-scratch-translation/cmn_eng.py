@@ -250,7 +250,7 @@ class Trainer:
         self.decoder_optimizer.zero_grad()
         source_length, target_length = source_list.size(0), target_list.size(0)
 
-        loss: torch.Tensor = torch.tensor(0, dtype=torch.float)
+        loss: torch.Tensor = torch.tensor(0, dtype=torch.float, device=device)
 
         # encode
         encoder_outputs = torch.zeros(MAX_DECODE_LENGTH, BATCH_SIZE, HIDDEN_SIZE, device=device)
